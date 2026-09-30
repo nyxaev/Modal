@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modal Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#E8ECF1; --surface:#FFFFFF; --ink:#172033; --muted:#5B6577; --line:#CBD3DE; --accent:#2F4BDD; --on-accent:#FFFFFF;
+  --shadow:0 18px 50px rgba(23,32,51,.28);
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#12161D;--surface:#1B212B;--ink:#E8ECF3;--muted:#97A1B3;--line:#2B3341;--accent:#7C93FF;--on-accent:#0E1220;--shadow:0 18px 50px rgba(0,0,0,.6)}
+}
+:root[data-theme="dark"]{--bg:#12161D;--surface:#1B212B;--ink:#E8ECF3;--muted:#97A1B3;--line:#2B3341;--accent:#7C93FF;--on-accent:#0E1220;--shadow:0 18px 50px rgba(0,0,0,.6)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body)}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 20px 60px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:22px}
+h1{font:700 32px/1 var(--display);letter-spacing:-.02em;margin:0 auto 0 0}
+.busca{flex:1 1 200px;max-width:320px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.primario{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:10px 18px;font-weight:500}
+.primario kbd{margin-left:8px;padding:0 6px;border-radius:5px;background:rgba(255,255,255,.22);font:inherit;font-size:13px}
+.grade{columns:3 260px;column-gap:16px}
+.nota{display:block;width:100%;text-align:left;break-inside:avoid;margin:0 0 16px;padding:0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.nota:hover{border-color:var(--muted)}
+.nota .faixa{display:block;height:8px}
+.nota .corpo{display:block;padding:14px 16px 16px}
+.nota .titulo{display:block;font:700 18px/1.25 var(--display);margin-bottom:6px;overflow-wrap:anywhere}
+.nota .previa{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.nota .data{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+.vazio{padding:48px 0;color:var(--muted);text-align:center}
+dialog{width:min(560px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(10,14,22,.55)}
+dialog[open]{animation:entra .18s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(-14px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){dialog[open]{animation:none}}
+.faixa-modal{height:10px}
+.modal-corpo{padding:18px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.campo-titulo{border:0;background:none;color:var(--ink);font:700 24px/1.2 var(--display);padding:4px 0;width:100%}
+.campo-texto{border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;padding:12px;min-height:200px;resize:vertical;width:100%}
+.campo-titulo:focus-visible{outline:none;box-shadow:0 2px 0 var(--accent)}
+.rodape{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.cores{display:flex;gap:8px;margin-right:auto}
+.cor{width:26px;height:26px;border-radius:50%;border:2px solid transparent;padding:0}
+.cor[aria-checked="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
+.sec{background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px}
+.perigo{color:#C0392B;border-color:#C0392B}
+.dica{font-size:13px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Modal Notes</h1>
+    <input class="busca" id="busca" type="search" placeholder="Buscar nas notas (/)" aria-label="Buscar nas notas">
+    <button class="primario" id="nova">Nova nota <kbd>N</kbd></button>
+  </header>
+  <main class="grade" id="grade" aria-live="polite"></main>
+  <p class="vazio" id="vazio" hidden></p>
+</div>
+
+<dialog id="modal" aria-label="Editar nota">
+  <div class="faixa-modal" id="faixaModal"></div>
+  <div class="modal-corpo">
+    <input class="campo-titulo" id="titulo" placeholder="Título" maxlength="120" aria-label="Título da nota">
+    <textarea class="campo-texto" id="texto" placeholder="Escreva sua nota…" aria-label="Texto da nota"></textarea>
+    <div class="rodape">
+      <div class="cores" id="cores" role="radiogroup" aria-label="Cor da nota"></div>
+      <button class="sec perigo" id="excluir" type="button">Excluir</button>
+      <button class="sec" id="cancelar" type="button">Cancelar</button>
+      <button class="primario" id="salvar" type="button">Salvar nota</button>
+    </div>
+    <p class="dica">Ctrl+Enter salva. Esc fecha sem salvar.</p>
+  </div>
+</dialog>
+
+<script>
+const KEY = 'modal-notes:v1';
+const CORES = ['#F2C94C', '#6FCF97', '#56B4E9', '#F28B82', '#B39DDB'];
+const $ = id => document.getElementById(id);
+let notas = [], atual = null, corAtual = CORES[0], confirmando = false;
+
+function ler() { try { const r = localStorage.getItem(KEY); if (r !== null) return JSON.parse(r); } catch (e) {} return null; }
+function gravar() { try { localStorage.setItem(KEY, JSON.stringify(notas)); } catch (e) {} }
+
+const salvas = ler();
+notas = Array.isArray(salvas) ? salvas : [{
+  id: String(Date.now()), titulo: 'Bem-vindo ao Modal Notes',
+  texto: 'Pressione N em qualquer lugar para abrir uma nota nova.\nPressione / para buscar.\nClique em uma nota para editar.\n\nSuas notas ficam salvas neste navegador.',
+  cor: CORES[2], atualizada: Date.now()
+}];
+if (!Array.isArray(salvas)) gravar();
+
+function render() {
+  const termo = $('busca').value.trim().toLowerCase();
+  const lista = notas
+    .filter(n => (n.titulo + ' ' + n.texto).toLowerCase().includes(termo))
+    .sort((a, b) => b.atualizada - a.atualizada);
+  const grade = $('grade');
+  grade.replaceChildren();
+  for (const n of lista) {
+    const b = document.createElement('button');
+    b.className = 'nota'; b.type = 'button';
+    b.innerHTML = '<span class="faixa"></span><span class="corpo"><span class="titulo"></span><span class="previa"></span><span class="data"></span></span>';
+    b.querySelector('.faixa').style.background = n.cor;
+    b.querySelector('.titulo').textContent = n.titulo || 'Sem título';
+    b.querySelector('.previa').textContent = n.texto;
+    b.querySelector('.data').textContent = new Date(n.atualizada).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+    b.onclick = () => abrir(n);
+    grade.appendChild(b);
+  }
+  const v = $('vazio');
+  v.hidden = lista.length > 0;
+  v.textContent = termo ? 'Nada encontrado para “' + termo + '”.' : 'Nenhuma nota ainda. Pressione N ou toque em Nova nota para começar.';
+}
+
+function pintar(c) {
+  corAtual = c;
+  $('faixaModal').style.background = c;
+  document.querySelectorAll('.cor').forEach(el => el.setAttribute('aria-checked', el.dataset.cor === c));
+}
+CORES.forEach(c => {
+  const el = document.createElement('button');
+  el.type = 'button'; el.className = 'cor'; el.dataset.cor = c; el.style.background = c;
+  el.setAttribute('role', 'radio'); el.setAttribute('aria-label', 'Cor ' + c);
+  el.onclick = () => pintar(c);
+  $('cores').appendChild(el);
+});
+
+function abrir(nota) {
+  atual = nota || null; confirmando = false;
+  $('excluir').textContent = 'Excluir';
+  $('excluir').hidden = !nota;
+  $('titulo').value = nota ? nota.titulo : '';
+  $('texto').value = nota ? nota.texto : '';
+  pintar(nota ? nota.cor : CORES[Math.floor(Math.random() * CORES.length)]);
+  $('modal').showModal();
+  (nota ? $('texto') : $('titulo')).focus();
+}
+
+function salvar() {
+  const titulo = $('titulo').value.trim(), texto = $('texto').value;
+  if (!titulo && !texto.trim()) { $('modal').close(); return; }
+  if (atual) Object.assign(atual, { titulo, texto, cor: corAtual, atualizada: Date.now() });
+  else notas.push({ id: String(Date.now()), titulo, texto, cor: corAtual, atualizada: Date.now() });
+  gravar(); render(); $('modal').close();
+}
+
+function excluir() {
+  if (!confirmando) { confirmando = true; $('excluir').textContent = 'Confirmar exclusão'; return; }
+  notas = notas.filter(n => n !== atual);
+  gravar(); render(); $('modal').close();
+}
+
+$('nova').onclick = () => abrir(null);
+$('salvar').onclick = salvar;
+$('cancelar').onclick = () => $('modal').close();
+$('excluir').onclick = excluir;
+$('busca').oninput = render;
+$('modal').addEventListener('click', e => { if (e.target === $('modal')) $('modal').close(); });
+$('modal').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); salvar(); } });
+document.addEventListener('keydown', e => {
+  const digitando = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if ($('modal').open || digitando || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); abrir(null); }
+  if (e.key === '/') { e.preventDefault(); $('busca').focus(); }
+});
+
+render();
+</script>
+</body>
+</html>
